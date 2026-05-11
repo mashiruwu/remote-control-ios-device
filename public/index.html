@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>iOS Remote QA</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #111;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 24px;
+            user-select: none;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        button {
+            padding: 11px 16px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            cursor: pointer;
+            background: white;
+            color: #111;
+            font-weight: 600;
+        }
+
+        button.secondary {
+            background: #2a2a2a;
+            color: white;
+            border: 1px solid #444;
+        }
+
+        button.danger {
+            background: #ff4d4d;
+            color: white;
+        }
+
+        #status {
+            min-height: 22px;
+            opacity: 0.85;
+            font-size: 14px;
+            text-align: center;
+            max-width: 760px;
+            word-break: break-word;
+        }
+
+        #layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        #phoneFrame {
+            width: 390px;
+            max-width: calc(100vw - 48px);
+            border-radius: 38px;
+            border: 10px solid #222;
+            background: black;
+            overflow: hidden;
+            box-shadow: 0 20px 70px rgba(0, 0, 0, 0.55);
+            position: relative;
+        }
+
+        /*
+      Important:
+      The iframe shows the OBS/MediaMTX WebRTC page.
+      The touch layer above it captures mouse/touch events.
+    */
+        #videoFrame {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: black;
+            pointer-events: none;
+        }
+
+        #touchLayer {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            cursor: crosshair;
+            touch-action: none;
+            background: transparent;
+            pointer-events: auto;
+        }
+
+        /* Quando estiver no modo player, deixa clicar no player */
+        body.player-mode #videoFrame {
+            pointer-events: auto;
+        }
+
+        body.player-mode #touchLayer {
+            pointer-events: none;
+            cursor: default;
+        }
+
+        #videoBox {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 393 / 852;
+            background: black;
+            overflow: hidden;
+        }
+
+
+        #touchDot {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            margin-left: -9px;
+            margin-top: -9px;
+            border-radius: 999px;
+            border: 2px solid white;
+            background: rgba(255, 255, 255, 0.25);
+            z-index: 20;
+            pointer-events: none;
+            display: none;
+        }
+
+        #sidePanel {
+            width: 320px;
+            max-width: calc(100vw - 48px);
+            background: #1b1b1b;
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 16px;
+        }
+
+        #sidePanel h2 {
+            margin: 0 0 12px;
+            font-size: 18px;
+        }
+
+        .info {
+            font-size: 13px;
+            color: #cfcfcf;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            background: #101010;
+            color: white;
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>iOS Remote QA</h1>
+
+    <div class="toolbar">
+        <button id="loadVideo">Load OBS Video</button>
+        <button id="startSession">Start Appium Session</button>
+        <button id="homeButton" class="secondary">Home</button>
+        <button id="openAppButton" class="secondary">Open App</button>
+        <button id="toggleMode" class="secondary">Mode: Control iPhone</button>
+        <button id="stopSession" class="danger">Stop Session</button>
+    </div>
+
+    <div id="status">Not connected</div>
+
+    <div id="layout">
+        <div id="phoneFrame">
+            <div id="videoBox">
+                <iframe id="videoFrame" allow="autoplay; fullscreen"></iframe>
+                <div id="touchLayer"></div>
+                <div id="touchDot"></div>
+            </div>
+        </div>
+
+        <div id="sidePanel">
+            <h2>Config</h2>
+
+            <div class="info" id="configInfo">Loading config...</div>
+
+            <label>
+                OBS/WebRTC URL
+                <input id="videoUrlInput" placeholder="http://localhost:8889/iphone" />
+            </label>
+
+            <button id="applyVideoUrl" class="secondary">Apply Video URL</button>
+
+            <h2 style="margin-top: 18px;">How to run</h2>
+            <div class="info">
+                1. Start tunnel:
+                sudo appium driver run xcuitest tunnel-creation --tunnel-registry-port 42000
+
+                2. Start Appium:
+                appium --address 127.0.0.1 --port 4723 --log-level debug
+
+                3. Start MediaMTX:
+                mediamtx
+
+                4. OBS WHIP URL:
+                http://localhost:8889/iphone/whip
+
+                5. Open this page:
+                http://MAC_IP:3000
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById("status");
+
+        const loadVideoButton = document.getElementById("loadVideo");
+        const startSessionButton = document.getElementById("startSession");
+        const stopSessionButton = document.getElementById("stopSession");
+        const homeButton = document.getElementById("homeButton");
+        const openAppButton = document.getElementById("openAppButton");
+        const applyVideoUrlButton = document.getElementById("applyVideoUrl");
+
+        const videoFrame = document.getElementById("videoFrame");
+        const videoUrlInput = document.getElementById("videoUrlInput");
+        const configInfo = document.getElementById("configInfo");
+
+        const touchLayer = document.getElementById("touchLayer");
+        const touchDot = document.getElementById("touchDot");
+        const toggleModeButton = document.getElementById("toggleMode");
+
+        let playerMode = false;
+
+        let appBundleId = null;
+        let deviceSize = null;
+        let pointerStart = null;
+
+        function setStatus(message) {
+            statusEl.textContent = message;
+        }
+
+        function showTouchDot(x, y) {
+            touchDot.style.left = `${x}px`;
+            touchDot.style.top = `${y}px`;
+            touchDot.style.display = "block";
+
+            setTimeout(() => {
+                touchDot.style.display = "none";
+            }, 180);
+        }
+
+        function getRatioFromPointerEvent(event) {
+            const rect = touchLayer.getBoundingClientRect();
+
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            return {
+                x,
+                y,
+                xRatio: x / rect.width,
+                yRatio: y / rect.height
+            };
+        }
+
+        async function postJson(url, body = {}) {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok || data.ok === false) {
+                throw new Error(data.error || JSON.stringify(data));
+            }
+
+            return data;
+        }
+
+        async function loadConfig() {
+            const response = await fetch("/api/config");
+            const data = await response.json();
+
+            appBundleId = data.appBundleId;
+            deviceSize = data.deviceSize;
+
+            videoUrlInput.value = data.videoUrl;
+
+            configInfo.textContent =
+                `App: ${data.appBundleId}\n` +
+                `UDID: ${data.udid}\n` +
+                `Device size: ${data.deviceSize.width} x ${data.deviceSize.height}\n` +
+                `Video URL: ${data.videoUrl}`;
+        }
+
+        function loadVideo() {
+            const url = videoUrlInput.value.trim();
+
+            if (!url) {
+                setStatus("Missing video URL");
+                return;
+            }
+
+            setStatus("Loading OBS/WebRTC video...");
+
+            videoFrame.removeAttribute("src");
+
+            setTimeout(() => {
+                videoFrame.setAttribute("src", url);
+                setStatus("OBS/WebRTC video loaded");
+            }, 150);
+        }
+
+        loadVideoButton.addEventListener("click", loadVideo);
+        applyVideoUrlButton.addEventListener("click", loadVideo);
+
+        toggleModeButton.addEventListener("click", () => {
+            playerMode = !playerMode;
+
+            document.body.classList.toggle("player-mode", playerMode);
+
+            toggleModeButton.textContent = playerMode
+                ? "Mode: Control Player"
+                : "Mode: Control iPhone";
+
+            setStatus(
+                playerMode
+                    ? "Player mode: you can click the video player controls."
+                    : "iPhone mode: clicks control the device."
+            );
+        });
+        startSessionButton.addEventListener("click", async () => {
+            try {
+                setStatus("Starting Appium session...");
+
+                const data = await postJson("/api/session/start");
+
+                deviceSize = data.deviceSize;
+
+                setStatus(
+                    `Appium connected. Device: ${deviceSize.width} x ${deviceSize.height}`
+                );
+            } catch (error) {
+                console.error(error);
+                setStatus(`Failed to start session: ${error.message}`);
+            }
+        });
+
+        stopSessionButton.addEventListener("click", async () => {
+            try {
+                setStatus("Stopping Appium session...");
+                await postJson("/api/session/stop");
+                setStatus("Session stopped");
+            } catch (error) {
+                console.error(error);
+                setStatus(`Failed to stop session: ${error.message}`);
+            }
+        });
+
+        homeButton.addEventListener("click", async () => {
+            try {
+                await postJson("/api/device/home");
+                setStatus("Home pressed");
+            } catch (error) {
+                console.error(error);
+                setStatus(`Home failed: ${error.message}`);
+            }
+        });
+
+        openAppButton.addEventListener("click", async () => {
+            try {
+                await postJson("/api/device/activate-app", {
+                    bundleId: appBundleId
+                });
+
+                setStatus(`Opened ${appBundleId}`);
+            } catch (error) {
+                console.error(error);
+                setStatus(`Open app failed: ${error.message}`);
+            }
+        });
+
+        touchLayer.addEventListener("pointerdown", event => {
+            event.preventDefault();
+
+            touchLayer.setPointerCapture(event.pointerId);
+
+            const point = getRatioFromPointerEvent(event);
+
+            pointerStart = {
+                ...point,
+                time: Date.now()
+            };
+
+            showTouchDot(point.x, point.y);
+        });
+
+        touchLayer.addEventListener("pointerup", async event => {
+            event.preventDefault();
+
+            if (!pointerStart) return;
+
+            const end = getRatioFromPointerEvent(event);
+
+            showTouchDot(end.x, end.y);
+
+            const dx = end.xRatio - pointerStart.xRatio;
+            const dy = end.yRatio - pointerStart.yRatio;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            try {
+                if (distance < 0.025) {
+                    await postJson("/api/device/tap", {
+                        xRatio: end.xRatio,
+                        yRatio: end.yRatio
+                    });
+
+                    setStatus(
+                        `Tap: ${(end.xRatio * 100).toFixed(1)}%, ${(end.yRatio * 100).toFixed(1)}%`
+                    );
+                } else {
+                    await postJson("/api/device/swipe", {
+                        startXRatio: pointerStart.xRatio,
+                        startYRatio: pointerStart.yRatio,
+                        endXRatio: end.xRatio,
+                        endYRatio: end.yRatio,
+                        duration: 500
+                    });
+
+                    setStatus("Swipe sent");
+                }
+            } catch (error) {
+                console.error(error);
+                setStatus(`Action failed: ${error.message}`);
+            } finally {
+                pointerStart = null;
+            }
+        });
+
+        touchLayer.addEventListener("pointercancel", () => {
+            pointerStart = null;
+        });
+
+        loadConfig().then(() => {
+            setStatus("Ready. Load OBS video, then start Appium session.");
+        });
+    </script>
+</body>
+
+</html>

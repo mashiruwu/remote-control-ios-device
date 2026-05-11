@@ -1,0 +1,6 @@
+webrtc: yes
+webrtcAddress: :8889
+
+paths:
+  iphone:
+    source: publisher
