@@ -101,6 +101,8 @@
             border: 0;
             background: black;
             pointer-events: none;
+            object-fit: fill;
+            user-select: none;
         }
 
         #touchLayer {
@@ -126,11 +128,22 @@
         #videoBox {
             position: relative;
             width: 100%;
-            aspect-ratio: 393 / 852;
+            aspect-ratio: var(--device-aspect, 428 / 926);
             background: black;
             overflow: hidden;
         }
 
+        #videoFrame {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: black;
+            pointer-events: none;
+            object-fit: fill;
+            user-select: none;
+        }
 
         #touchDot {
             position: absolute;
@@ -211,11 +224,10 @@
 
             <label>
                 OBS/WebRTC URL
-                <input id="videoUrlInput" placeholder="http://localhost:8889/iphone" />
+                <input id="videoUrlInput" placeholder="http://localhost:8889/simulator" />
             </label>
 
             <button id="applyVideoUrl" class="secondary">Apply Video URL</button>
-
             <h2 style="margin-top: 18px;">How to run</h2>
             <div class="info">
                 1. Start tunnel:
@@ -228,7 +240,7 @@
                 mediamtx
 
                 4. OBS WHIP URL:
-                http://localhost:8889/iphone/whip
+                http://localhost:8889/simulator/whip
 
                 5. Open this page:
                 http://MAC_IP:3000
@@ -260,6 +272,19 @@
         let deviceSize = null;
         let pointerStart = null;
 
+        let actionBusy = false;
+
+        function applyDeviceSize(size) {
+            if (!size || !size.width || !size.height) return;
+
+            document.documentElement.style.setProperty(
+                "--device-aspect",
+                `${size.width} / ${size.height}`
+            );
+
+            const maxWidth = Math.min(size.width, 520);
+            document.getElementById("phoneFrame").style.width = `${maxWidth}px`;
+        }
         function setStatus(message) {
             statusEl.textContent = message;
         }
@@ -312,7 +337,7 @@
 
             appBundleId = data.appBundleId;
             deviceSize = data.deviceSize;
-
+            applyDeviceSize(deviceSize);
             videoUrlInput.value = data.videoUrl;
 
             configInfo.textContent =
@@ -321,7 +346,6 @@
                 `Device size: ${data.deviceSize.width} x ${data.deviceSize.height}\n` +
                 `Video URL: ${data.videoUrl}`;
         }
-
         function loadVideo() {
             const url = videoUrlInput.value.trim();
 
@@ -365,7 +389,7 @@
                 const data = await postJson("/api/session/start");
 
                 deviceSize = data.deviceSize;
-
+                applyDeviceSize(deviceSize);
                 setStatus(
                     `Appium connected. Device: ${deviceSize.width} x ${deviceSize.height}`
                 );
@@ -437,18 +461,33 @@
             const dy = end.yRatio - pointerStart.yRatio;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
+            if (actionBusy) {
+                setStatus("Device busy, ignoring extra input...");
+                pointerStart = null;
+                return;
+            }
+
+            actionBusy = true;
             try {
                 if (distance < 0.025) {
-                    await postJson("/api/device/tap", {
+                    const result = await postJson("/api/device/tap", {
                         xRatio: end.xRatio,
                         yRatio: end.yRatio
                     });
 
-                    setStatus(
-                        `Tap: ${(end.xRatio * 100).toFixed(1)}%, ${(end.yRatio * 100).toFixed(1)}%`
-                    );
+                    if (result.skipped) {
+                        setStatus("Device busy, tap skipped");
+                    } else if (result.timedOut) {
+                        setStatus(
+                            `Tap sent, response timed out: ${(end.xRatio * 100).toFixed(1)}%, ${(end.yRatio * 100).toFixed(1)}%`
+                        );
+                    } else {
+                        setStatus(
+                            `Tap: ${(end.xRatio * 100).toFixed(1)}%, ${(end.yRatio * 100).toFixed(1)}%`
+                        );
+                    }
                 } else {
-                    await postJson("/api/device/swipe", {
+                    const result = await postJson("/api/device/swipe", {
                         startXRatio: pointerStart.xRatio,
                         startYRatio: pointerStart.yRatio,
                         endXRatio: end.xRatio,
@@ -456,12 +495,19 @@
                         duration: 500
                     });
 
-                    setStatus("Swipe sent");
+                    if (result.skipped) {
+                        setStatus("Device busy, swipe skipped");
+                    } else if (result.timedOut) {
+                        setStatus("Swipe sent, response timed out");
+                    } else {
+                        setStatus("Swipe sent");
+                    }
                 }
             } catch (error) {
                 console.error(error);
                 setStatus(`Action failed: ${error.message}`);
             } finally {
+                actionBusy = false;
                 pointerStart = null;
             }
         });
@@ -471,7 +517,7 @@
         });
 
         loadConfig().then(() => {
-            setStatus("Ready. Load OBS video, then start Appium session.");
+            setStatus("Ready. Load QuickTime video, then start Appium session.");
         });
     </script>
 </body>
