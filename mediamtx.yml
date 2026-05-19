@@ -2,5 +2,5 @@ webrtc: yes
 webrtcAddress: :8889
 
 paths:
-  iphone:
+  simulator:
     source: publisher

@@ -1,6 +1,20 @@
 import express from "express";
+import cors from "cors";
 
 const app = express();
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:8080",
+      "http://127.0.0.1:8080",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
 
 app.use(express.json());
 app.use(express.static("public"));
@@ -8,15 +22,18 @@ app.use(express.static("public"));
 const APPIUM_URL = "http://127.0.0.1:4723";
 
 const CONFIG = {
-  appBundleId: "com.company.app",
-  
-  udid: "YOUR_DEVICE_UDID",
-  xcodeSigningId: "iPhone Developer",
-  xcodeOrgId: "YOUR_TEAM_ID",
+  appBundleId: "",
 
-  // MediaMTX/OBS WebRTC viewer URL.
-  // If QA is on another PC, replace localhost in the frontend automatically with the Mac IP.
-  obsWebRtcPath: "/iphone"
+  udid: "",
+  xcodeSigningId: "iPhone Developer",
+  xcodeOrgId: "",
+
+  // OBS publishes to:
+  // http://localhost:8889/simulator/whip
+  //
+  // Browser watches:
+  // http://MAC_IP:8889/simulator
+  obsWebRtcPath: "/simulator"
 };
 
 let sessionId = null;
@@ -26,22 +43,106 @@ let deviceSize = {
   height: 852
 };
 
-async function appiumRequest(path, options = {}) {
-  const response = await fetch(`${APPIUM_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
-  });
+let deviceActionInFlight = false;
 
-  const data = await response.json().catch(() => ({}));
+let deviceActionBusy = false;
 
-  if (!response.ok) {
-    throw new Error(JSON.stringify(data, null, 2));
+async function runDeviceAction(actionName, action, timeoutMs = 800) {
+  if (deviceActionBusy) {
+    return {
+      accepted: false,
+      skipped: true,
+      reason: "Device action already running"
+    };
   }
 
-  return data;
+  deviceActionBusy = true;
+
+  try {
+    await action(timeoutMs);
+
+    return {
+      accepted: true,
+      skipped: false,
+      timedOut: false
+    };
+  } catch (error) {
+    if (error.code === "APPIUM_TIMEOUT") {
+      console.warn(`${actionName} timed out, but it may have already executed on device`);
+
+      return {
+        accepted: true,
+        skipped: false,
+        timedOut: true
+      };
+    }
+
+    throw error;
+  } finally {
+    setTimeout(() => {
+      deviceActionBusy = false;
+    }, 120);
+  }
+}
+
+async function runDeviceActionOnce(actionName, action) {
+  if (deviceActionInFlight) {
+    return {
+      skipped: true,
+      reason: "Previous device action still running"
+    };
+  }
+
+  deviceActionInFlight = true;
+
+  try {
+    await action();
+
+    return {
+      skipped: false
+    };
+  } finally {
+    deviceActionInFlight = false;
+  }
+}
+async function appiumRequest(path, options = {}, config = {}) {
+  const timeoutMs = config.timeoutMs ?? 10_000;
+
+  const controller = new AbortController();
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const response = await fetch(`${APPIUM_URL}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "Connection": "close",
+        ...(options.headers || {})
+      }
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(JSON.stringify(data, null, 2));
+    }
+
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      const timeoutError = new Error(`Appium request timed out after ${timeoutMs}ms`);
+      timeoutError.code = "APPIUM_TIMEOUT";
+      throw timeoutError;
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function ratioToDevicePoint(xRatio, yRatio) {
@@ -63,9 +164,7 @@ app.get("/api/config", (req, res) => {
     udid: CONFIG.udid,
     deviceSize,
 
-    // MediaMTX default WebRTC HTTP port.
-    // OBS publishes to: http://localhost:8889/iphone/whip
-    // Browser watches: http://MAC_IP:8889/iphone
+    videoType: "webrtc",
     videoUrl: `http://${host}:8889${CONFIG.obsWebRtcPath}`
   });
 });
@@ -91,13 +190,11 @@ app.post("/api/session/start", async (req, res) => {
             "appium:automationName": "XCUITest",
             "appium:udid": CONFIG.udid,
             "appium:xcodeSigningId": CONFIG.xcodeSigningId,
-            "appium:xcodeOrgId": CONFIG.xcodeOrgId,
-            "appium:showXcodeLog": true,
-
-            // These still help Appium/WDA, even though video is OBS.
-            "appium:screenshotQuality": 2,
-            "appium:waitForIdleTimeout": 1,
-            "appium:newCommandTimeout": 3600
+            "appium:showXcodeLog": false,
+            "appium:waitForIdleTimeout": 0,
+            "appium:newCommandTimeout": 3600,
+            "appium:wdaLocalPort": 8101,
+            "appium:useNewWDA": false
           }
         }
       })
@@ -197,26 +294,30 @@ app.post("/api/device/tap", async (req, res) => {
     const { xRatio, yRatio } = req.body;
     const { x, y } = ratioToDevicePoint(xRatio, yRatio);
 
-    await appiumRequest(`/session/${sessionId}/actions`, {
-      method: "POST",
-      body: JSON.stringify({
-        actions: [
-          {
-            type: "pointer",
-            id: "finger1",
-            parameters: { pointerType: "touch" },
-            actions: [
-              { type: "pointerMove", duration: 0, x, y },
-              { type: "pointerDown", button: 0 },
-              { type: "pause", duration: 80 },
-              { type: "pointerUp", button: 0 }
-            ]
-          }
-        ]
-      })
-    });
+    const result = await runDeviceAction("tap", async (timeoutMs) => {
+      await appiumRequest(`/session/${sessionId}/actions`, {
+        method: "POST",
+        body: JSON.stringify({
+          actions: [
+            {
+              type: "pointer",
+              id: "finger1",
+              parameters: { pointerType: "touch" },
+              actions: [
+                { type: "pointerMove", duration: 0, x, y },
+                { type: "pointerDown", button: 0 },
+                { type: "pause", duration: 40 },
+                { type: "pointerUp", button: 0 }
+              ]
+            }
+          ]
+        })
+      }, {
+        timeoutMs
+      });
+    }, 700);
 
-    res.json({ ok: true, x, y });
+    res.json({ ok: true, x, y, ...result });
   } catch (error) {
     console.error(error);
 
@@ -243,46 +344,50 @@ app.post("/api/device/swipe", async (req, res) => {
 
     const start = ratioToDevicePoint(startXRatio, startYRatio);
     const end = ratioToDevicePoint(endXRatio, endYRatio);
-
-    await appiumRequest(`/session/${sessionId}/actions`, {
-      method: "POST",
-      body: JSON.stringify({
-        actions: [
-          {
-            type: "pointer",
-            id: "finger1",
-            parameters: { pointerType: "touch" },
-            actions: [
-              {
-                type: "pointerMove",
-                duration: 0,
-                x: start.x,
-                y: start.y
-              },
-              {
-                type: "pointerDown",
-                button: 0
-              },
-              {
-                type: "pointerMove",
-                duration,
-                x: end.x,
-                y: end.y
-              },
-              {
-                type: "pointerUp",
-                button: 0
-              }
-            ]
-          }
-        ]
-      })
-    });
+    const result = await runDeviceAction("swipe", async (timeoutMs) => {
+      await appiumRequest(`/session/${sessionId}/actions`, {
+        method: "POST",
+        body: JSON.stringify({
+          actions: [
+            {
+              type: "pointer",
+              id: "finger1",
+              parameters: { pointerType: "touch" },
+              actions: [
+                {
+                  type: "pointerMove",
+                  duration: 0,
+                  x: start.x,
+                  y: start.y
+                },
+                {
+                  type: "pointerDown",
+                  button: 0
+                },
+                {
+                  type: "pointerMove",
+                  duration,
+                  x: end.x,
+                  y: end.y
+                },
+                {
+                  type: "pointerUp",
+                  button: 0
+                }
+              ]
+            }
+          ]
+        })
+      }, {
+        timeoutMs
+      });
+    }, duration + 900);
 
     res.json({
       ok: true,
       start,
-      end
+      end,
+      ...result
     });
   } catch (error) {
     console.error(error);
