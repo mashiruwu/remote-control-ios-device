@@ -1,0 +1,238 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --device-aspect: 428 / 926;
+  --phone-width: 390px;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #111;
+  color: white;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  user-select: none;
+}
+
+h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+button {
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+  background: white;
+  color: #111;
+  font-weight: 600;
+}
+
+button.secondary {
+  background: #2a2a2a;
+  color: white;
+  border: 1px solid #444;
+}
+
+button.danger {
+  background: #ff4d4d;
+  color: white;
+}
+
+#status {
+  min-height: 22px;
+  opacity: 0.85;
+  font-size: 14px;
+  text-align: center;
+  max-width: 760px;
+  word-break: break-word;
+}
+
+#layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+#phoneArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+}
+
+#phoneControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1b1b1b;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 10px 12px;
+}
+
+#phoneControls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #cfcfcf;
+}
+
+#sizeSlider {
+  width: 220px;
+  margin: 0;
+}
+
+#phoneFrame {
+  width: var(--phone-width);
+  max-width: calc(100vw - 48px);
+  border-radius: 38px;
+  border: 10px solid #222;
+  background: black;
+  overflow: hidden;
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.55);
+  position: relative;
+}
+
+#videoBox {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--device-aspect);
+  background: black;
+  overflow: hidden;
+}
+
+#videoFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: black;
+  pointer-events: none;
+  object-fit: fill;
+  user-select: none;
+}
+
+#touchLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: crosshair;
+  touch-action: none;
+  background: transparent;
+  pointer-events: auto;
+}
+
+body.player-mode #videoFrame {
+  pointer-events: auto;
+}
+
+body.player-mode #touchLayer {
+  pointer-events: none;
+  cursor: default;
+}
+
+#touchDot {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -9px;
+  border-radius: 999px;
+  border: 2px solid white;
+  background: rgba(255, 255, 255, 0.25);
+  z-index: 20;
+  pointer-events: none;
+  display: none;
+}
+
+#sidePanel {
+  width: 320px;
+  max-width: calc(100vw - 48px);
+  background: #1b1b1b;
+  border: 1px solid #333;
+  border-radius: 20px;
+  padding: 16px;
+}
+
+#sidePanel h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.sectionTitle {
+  margin-top: 18px !important;
+}
+
+.info {
+  font-size: 13px;
+  color: #cfcfcf;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.helpBox {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #111;
+  border: 1px solid #333;
+}
+
+.helpBox strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.helpBox p {
+  margin: 0;
+  font-size: 13px;
+  color: #cfcfcf;
+  line-height: 1.45;
+}
+
+input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #444;
+  background: #101010;
+  color: white;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 900px) {
+  body {
+    padding: 16px;
+  }
+
+  #sizeSlider {
+    width: 160px;
+  }
+}

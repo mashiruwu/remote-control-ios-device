@@ -16,7 +16,7 @@ create_profile() {
 
   echo "Creating OBS profile: $NAME"
 
-  mkdir -p "$PROFILE_DIR"
+  mkdir -p "$PROFILE_DIRa"
 
   cat > "$PROFILE_DIR/basic.ini" <<EOF
 [General]
@@ -59,7 +59,7 @@ EOF
   cat > "$PROFILE_DIR/service.json" <<EOF
 {
   "settings": {
-    "server": "http://localhost:8889/simulator/whip",
+    "server": "http://localhost/simulator/whip",
     "service": "WHIP"
   },
   "type": "whip_custom"
@@ -70,7 +70,7 @@ EOF
   cat > "$PROFILE_DIR/service.json" <<EOF
 {
   "settings": {
-    "server": "http://localhost:8889/simulator/whip",
+    "server": "http://localhost/simulator/whip",
     "service": "WHIP"
   },
   "type": "whip_custom"

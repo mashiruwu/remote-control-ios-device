@@ -67,7 +67,7 @@ In OBS:
 
    ```txt
    Service: WHIP
-   Server: http://localhost:8889/simulator/whip
+   Server: http://localhost/simulator/whip
    ```
 
 4. Use a browser-compatible encoder:
@@ -107,7 +107,7 @@ Start Streaming
 The browser video URL should be:
 
 ```txt
-http://localhost:8889/simulator
+http://localhost/simulator
 ```
 
 For another machine on Tailscale/LAN:
@@ -121,13 +121,13 @@ http://MAC_IP:8889/simulator
 In another terminal:
 
 ```bash
-appium --address 127.0.0.1 --port 4723 --log-level error
+appium --address localhost --port 4723 --log-level error
 ```
 
 If you need logs while debugging, use:
 
 ```bash
-appium --address 127.0.0.1 --port 4723 --log-level debug
+appium --address localhost --port 4723 --log-level debug
 ```
 
 ## 6. Start the Node server
@@ -177,13 +177,13 @@ videoUrl: `http://${host}:8889/simulator`
 OBS should publish to:
 
 ```txt
-http://localhost:8889/simulator/whip
+http://localhost/simulator/whip
 ```
 
 The browser should watch:
 
 ```txt
-http://localhost:8889/simulator
+http://localhost/simulator
 ```
 
 ## Troubleshooting
@@ -193,7 +193,7 @@ http://localhost:8889/simulator
 Make sure `public/index.html` has only one input with this ID:
 
 ```html
-<input id="videoUrlInput" placeholder="http://localhost:8889/simulator" />
+<input id="videoUrlInput" placeholder="http://localhost/simulator" />
 ```
 
 Also make sure this button exists:
@@ -267,7 +267,7 @@ Encoder: H.264 hardware encoder
 mediamtx
 
 # Terminal 2
-appium --address 127.0.0.1 --port 4723 --log-level error
+appium --address localhost --port 4723 --log-level error
 
 # Terminal 3
 node server.js
@@ -278,7 +278,7 @@ Then:
 ```txt
 1. Open QuickTime New Movie Recording
 2. Select iPhone/iPad as source
-3. Start OBS streaming to http://localhost:8889/simulator/whip
+3. Start OBS streaming to http://localhost/simulator/whip
 4. Open http://localhost:3000
 5. Load OBS Video
 6. Start Appium Session

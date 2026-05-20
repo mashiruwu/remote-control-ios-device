@@ -60,14 +60,9 @@ pkill -f "WebDriverAgent" >/dev/null 2>&1 || true
 pkill -f "xcodebuild.*WebDriverAgent" >/dev/null 2>&1 || true
 pkill -f "iproxy" >/dev/null 2>&1 || true
 
-# If your start-qa-iphone.sh starts the Swift QTWindowStream process, kill it too.
-pkill -f "QTWindowStream" >/dev/null 2>&1 || true
-pkill -f "swift run QTWindowStream" >/dev/null 2>&1 || true
-
 # Optional: close OBS and QuickTime.
 # Comment these two lines if you want to keep the apps open.
 osascript -e 'tell application "OBS" to quit' >/dev/null 2>&1 || true
-osascript -e 'tell application "QuickTime Player" to quit' >/dev/null 2>&1 || true
 
 # 3. Free known ports.
 echo "Freeing common ports..."

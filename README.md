@@ -1,516 +1,807 @@
-# iOS Remote QA
+# How to Run a Remote iPhone/iPad QA Session with QuickTime, OBS, MediaMTX, Appium, and a Browser UI
 
-A local remote QA setup for controlling a real iPhone from a web page.
+A simple, beginner-friendly guide for running a real iOS device remotely from a web browser.
 
-The video stream is handled by:
+The goal of this setup is simple:
 
-- QuickTime: displays the iPhone screen on the Mac
-- OBS: captures the QuickTime window
-- MediaMTX: receives the OBS stream and exposes it through WebRTC
+- **QuickTime** mirrors the physical iPhone or iPad screen on the Mac.
+- **OBS** captures that mirrored screen and publishes it as a WebRTC stream.
+- **MediaMTX** receives the stream and makes it available in the browser.
+- **Appium + WebDriverAgent** sends taps, swipes, Home button events, and app activation commands to the real device.
+- **Node/Express** serves the web UI and proxies browser actions to Appium.
 
-The device control is handled by:
-
-- Appium
-- WebDriverAgent
-- XCUITest
-- A Node/Express backend that sends tap/swipe commands to Appium
-
-## Architecture
-
-```txt
-QA Browser
-  ├── watches iPhone video through MediaMTX WebRTC
-  └── sends tap/swipe commands to Node backend
-
-Node Backend
-  └── sends W3C touch actions to Appium
-
-Appium
-  └── controls WebDriverAgent on the iPhone
-
-Video Pipeline
-  iPhone → QuickTime → OBS → MediaMTX → Browser
-```
-
-## Requirements
-
-### Mac
-
-- Xcode installed
-- Node.js 22 recommended
-- Appium installed
-- XCUITest Appium driver installed
-- MediaMTX installed
-- OBS installed
-- QuickTime Player
-- Real iPhone connected through USB
-
-### Recommended Node setup
-
-```bash
-nvm use 22
-```
-
-Check:
-
-```bash
-node -v
-npm -v
-which node
-```
-
-## Install dependencies
-
-From the project folder:
-
-```bash
-npm install
-```
-
-Expected project structure:
-
-```txt
-remote_qa/
-├── package.json
-├── server.js
-├── mediamtx.yml
-└── public/
-    └── index.html
-```
-
-## MediaMTX config
-
-Create `mediamtx.yml`:
-
-```yml
-webrtc: yes
-webrtcAddress: :8889
-
-paths:
-  iphone:
-    source: publisher
-```
-
-Run MediaMTX with:
-
-```bash
-mediamtx mediamtx.yml
-```
-
-Expected log:
-
-```txt
-[WebRTC] listener opened on :8889
-```
-
-## QuickTime setup
-
-1. Connect the iPhone through USB.
-2. Unlock the iPhone.
-3. Open QuickTime Player.
-4. Go to:
-
-```txt
-File > New Movie Recording
-```
-
-5. Click the arrow next to the red record button.
-6. Select the iPhone as the camera source.
-
-Keep this QuickTime window open.
-
-## OBS setup
-
-1. Open OBS.
-2. Add a source:
-
-```txt
-Sources > + > macOS Screen Capture
-```
-
-or:
-
-```txt
-Sources > + > Window Capture
-```
-
-3. Select the QuickTime window showing the iPhone.
-4. Set OBS canvas to portrait.
-
-Recommended:
-
-```txt
-Settings > Video
-Base Canvas Resolution: 540x1170
-Output Scaled Resolution: 540x1170
-```
-
-Or higher quality:
-
-```txt
-Base Canvas Resolution: 1080x2340
-Output Scaled Resolution: 1080x2340
-```
-
-5. Crop black borders by selecting the source, holding `Option/Alt`, and dragging the red edges inward.
-
-6. Configure stream:
-
-```txt
-Settings > Stream
-Service: WHIP
-Server: http://localhost:8889/iphone/whip
-```
-
-7. Click:
-
-```txt
-Start Streaming
-```
-
-Expected MediaMTX log:
-
-```txt
-is reading from path 'iphone', 2 tracks (H264, Opus)
-```
-
-## Appium tunnel
-
-For real iPhones on newer iOS versions, start the RemoteXPC tunnel first.
-
-Terminal 1:
-
-```bash
-sudo appium driver run xcuitest tunnel-creation --tunnel-registry-port 42000
-```
-
-Keep this terminal open.
-
-Check tunnel:
-
-```bash
-curl http://localhost:42000/remotexpc/tunnels
-```
-
-Expected response should include the iPhone UDID.
-
-## Appium server
-
-Terminal 2:
-
-```bash
-appium --address 127.0.0.1 --port 4723 --log-level debug
-```
-
-Do not run the Appium server with `sudo`.
-
-Only the tunnel command needs `sudo`.
-
-## Start the web app
-
-Terminal 3:
-
-```bash
-npm start
-```
-
-Or:
-
-```bash
-node server.js
-```
-
-Open locally:
+By the end, you should be able to open:
 
 ```txt
 http://localhost:3000
 ```
 
-From another computer on the same network:
+and see/control the connected iPhone or iPad from the browser.
+
+---
+
+## Image guide: where to place screenshots
+
+If you are turning this into a Medium article, upload the images directly inside Medium at the places marked below.
+
+If you are keeping this article in the repo first, store the screenshots here:
 
 ```txt
-http://MAC_IP:3000
+docs/images/remote-qa/
 ```
 
-Only expose this through VPN/Tailscale/SSH tunnel. Do not expose the web UI, Appium, or MediaMTX directly to the public internet.
+Suggested image names:
 
-Find the Mac IP:
+| Image | Put it after | Suggested file path |
+|---|---|---|
+| Architecture diagram | “How the setup works” | `docs/images/remote-qa/01-architecture.png` |
+| Installed tools terminal | “Install the required tools” | `docs/images/remote-qa/02-installed-tools.png` |
+| Xcode Devices and Simulators | “Prepare the iPhone or iPad” | `docs/images/remote-qa/03-xcode-device.png` |
+| QuickTime showing the device screen | “Test QuickTime capture” | `docs/images/remote-qa/04-quicktime-device.png` |
+| OBS scene with the device window | “Configure OBS” | `docs/images/remote-qa/05-obs-scene.png` |
+| MediaMTX / browser WebRTC stream loaded | “Test the video stream” | `docs/images/remote-qa/06-webrtc-stream.png` |
+| Appium session running | “Start Appium” | `docs/images/remote-qa/07-appium-session.png` |
+| Final browser UI controlling the device | “Run the full setup” | `docs/images/remote-qa/08-final-browser-ui.png` |
+| Troubleshooting logs | “Troubleshooting” | `docs/images/remote-qa/09-logs.png` |
+
+When writing the article in Markdown, you can use placeholders like this:
+
+```md
+![Architecture diagram](docs/images/remote-qa/01-architecture.png)
+```
+
+On Medium, replace each placeholder with the actual uploaded image.
+
+---
+
+## How the setup works
+
+Before installing anything, it helps to understand the pipeline.
+
+```txt
+Physical iPhone/iPad
+        │
+        │ USB screen mirroring
+        ▼
+QuickTime Player on Mac
+        │
+        │ captured as a window
+        ▼
+OBS Studio
+        │
+        │ publishes WebRTC through WHIP
+        ▼
+MediaMTX
+        │
+        │ browser reads WebRTC stream
+        ▼
+Web UI at http://localhost:3000
+        │
+        │ taps / swipes / home / activate app
+        ▼
+Node server → Appium → WebDriverAgent → iOS device
+```
+
+**Image:** add `docs/images/remote-qa/01-architecture.png` here.
+
+This setup separates video and control:
+
+- **Video path:** iPhone/iPad → QuickTime → OBS → MediaMTX → browser.
+- **Control path:** browser → Node server → Appium → WebDriverAgent → iPhone/iPad.
+
+That is why the stream can stay smooth while Appium focuses only on input events.
+
+---
+
+## What you need to install
+
+This guide assumes you are running everything on a Mac, because iOS real-device automation depends on Xcode and Apple’s developer tooling.
+
+Install these tools first:
+
+1. **Xcode**
+2. **Xcode Command Line Tools**
+3. **Homebrew**
+4. **Node.js + npm**
+5. **Appium**
+6. **Appium XCUITest driver**
+7. **libimobiledevice**
+8. **ios-deploy**
+9. **OBS Studio**
+10. **MediaMTX**
+11. **QuickTime Player** — already included with macOS
+12. **An Apple Developer Team ID** for WebDriverAgent signing
+13. **A real iPhone or iPad connected by USB**
+
+---
+
+## 1. Install Xcode and Command Line Tools
+
+Install Xcode from the Mac App Store.
+
+After Xcode is installed, open it once so it can finish installing components. Then run:
 
 ```bash
-ipconfig getifaddr en0
+xcode-select --install
 ```
 
-## Web UI usage
+If you have more than one Xcode installed, make sure the correct one is selected:
 
-1. Start MediaMTX.
-2. Start QuickTime.
-3. Start OBS streaming.
-4. Start the Appium tunnel.
-5. Start Appium server.
-6. Start the Node backend.
-7. Open the web UI.
-8. Click:
+```bash
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+```
+
+Accept the license if needed:
+
+```bash
+sudo xcodebuild -license accept
+```
+
+Check that Xcode is working:
+
+```bash
+xcodebuild -version
+```
+
+---
+
+## 2. Install Homebrew
+
+Homebrew makes the rest of the setup much easier.
+
+Install it with:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Then check it:
+
+```bash
+brew --version
+```
+
+---
+
+## 3. Install Node.js, MediaMTX, and iOS helper tools
+
+Run:
+
+```bash
+brew install node git mediamtx libimobiledevice ios-deploy
+```
+
+Check the versions:
+
+```bash
+node -v
+npm -v
+mediamtx --version
+idevice_id -l
+ios-deploy --version
+```
+
+`idevice_id -l` should show your connected device UDID after the device is trusted.
+
+**Image:** add `docs/images/remote-qa/02-installed-tools.png` here.
+
+---
+
+## 4. Install Appium
+
+Install Appium globally:
+
+```bash
+npm install -g appium
+```
+
+Install the iOS driver:
+
+```bash
+appium driver install xcuitest
+```
+
+Check that the driver is installed:
+
+```bash
+appium driver list --installed
+```
+
+Optional but recommended:
+
+```bash
+appium driver doctor xcuitest
+```
+
+Start Appium once to confirm it works:
+
+```bash
+appium
+```
+
+You should see Appium listening on port `4723`.
+
+Stop it with `Control + C`. The project startup script will start Appium automatically later.
+
+---
+
+## 5. Prepare the iPhone or iPad
+
+Connect the iPhone or iPad to the Mac using USB.
+
+On the device:
+
+1. Unlock it.
+2. Tap **Trust This Computer** if prompted.
+3. Keep the screen unlocked during setup.
+
+On the Mac:
+
+1. Open Xcode.
+2. Go to **Window → Devices and Simulators**.
+3. Select your connected iPhone or iPad.
+4. Confirm that Xcode can see the device.
+
+You need three values before running the project:
+
+| Value | What it is | Where to find it |
+|---|---|---|
+| `udid` | Unique device ID | Xcode Devices and Simulators, or `idevice_id -l` |
+| `xcodeOrgId` | Apple Developer Team ID | Apple Developer account membership page |
+| `appBundleId` | Bundle ID of the app under test | Xcode project target, General tab |
+
+**Image:** add `docs/images/remote-qa/03-xcode-device.png` here.
+
+Do not publish your real UDID or Team ID in screenshots. Blur them before sharing the article.
+
+---
+
+## 6. Install OBS Studio
+
+Install OBS Studio from the official website, or use Homebrew Cask:
+
+```bash
+brew install --cask obs
+```
+
+Open OBS once manually before using the scripts. macOS may ask for screen recording permissions.
+
+Go to:
 
 ```txt
-Load OBS Video
+System Settings → Privacy & Security → Screen & System Audio Recording
 ```
 
-9. Click:
+Enable OBS.
+
+You may also need to enable permissions for Terminal, iTerm, or the app you use to run the scripts.
+
+---
+
+## 7. Put the files in the right folders
+
+A clean project structure should look like this:
 
 ```txt
-Start Appium Session
+remote-qa/
+  server.js
+  package.json
+  mediamtx.yml
+  run-remote-qa.sh
+  run-iphone-obs.sh
+  run-ipad-obs.sh
+  create-obs-profiles.sh
+  kill-remote-qa.sh
+
+  public/
+    index.html
+    ...browser UI files...
+
+  qt-window-stream/
+    Package.swift
+    Sources/
+      QTWindowStream/
+        ...Swift source files...
+    open-iphone-quicktime.applescript
+    start-qa-iphone.sh
+
+  docs/
+    images/
+      remote-qa/
+        01-architecture.png
+        02-installed-tools.png
+        ...
 ```
 
-## Control modes
-
-The page has two modes.
-
-### Control iPhone mode
-
-Use this when you want mouse clicks and drags to control the iPhone.
+Important detail: the startup script expects the QuickTime helper script inside:
 
 ```txt
-Mode: Control iPhone
+qt-window-stream/start-qa-iphone.sh
 ```
 
-- Click = tap
-- Drag = swipe
-
-### Control Player mode
-
-Use this when you need to interact with the WebRTC player itself.
+and that script expects the AppleScript beside it:
 
 ```txt
-Mode: Control Player
+qt-window-stream/open-iphone-quicktime.applescript
 ```
 
-Use this to:
+---
 
-- unmute audio
-- click player controls
-- enter fullscreen
+## 8. Configure the Node server
 
-Then switch back to:
+Open `server.js` and fill the config block:
 
-```txt
-Mode: Control iPhone
+```js
+const CONFIG = {
+  appBundleId: "com.yourcompany.yourapp",
+
+  udid: "YOUR_DEVICE_UDID",
+  xcodeSigningId: "iPhone Developer",
+  xcodeOrgId: "YOUR_APPLE_TEAM_ID",
+
+  obsWebRtcPath: "/simulator"
+};
 ```
 
-## Important ports
+Also make sure `xcodeOrgId` is passed into the Appium capabilities:
 
-```txt
-3000  - Node web interface
-4723  - Appium server
-42000 - Appium RemoteXPC tunnel registry
-8889  - MediaMTX WebRTC HTTP
-8189  - MediaMTX WebRTC ICE UDP
+```js
+"appium:xcodeOrgId": CONFIG.xcodeOrgId,
 ```
 
-Do not expose Appium ports publicly.
+The Appium session should include at least:
 
-For remote access outside the local network, prefer VPN/Tailscale.
-
-## Appium capabilities
-
-Current basic capabilities:
-
-```json
-{
-  "platformName": "iOS",
-  "appium:bundleId": "com.company.app",
+```js
+alwaysMatch: {
+  platformName: "iOS",
+  "appium:bundleId": CONFIG.appBundleId,
   "appium:automationName": "XCUITest",
-  "appium:udid": "YOUR_DEVICE_UDID",
-  "appium:xcodeSigningId": "iPhone Developer",
-  "appium:xcodeOrgId": "YOUR_TEAM_ID",
-  "appium:showXcodeLog": true,
-  "appium:screenshotQuality": 2,
-  "appium:waitForIdleTimeout": 1,
-  "appium:newCommandTimeout": 3600
+  "appium:udid": CONFIG.udid,
+  "appium:xcodeSigningId": CONFIG.xcodeSigningId,
+  "appium:xcodeOrgId": CONFIG.xcodeOrgId,
+  "appium:showXcodeLog": false,
+  "appium:waitForIdleTimeout": 0,
+  "appium:newCommandTimeout": 3600,
+  "appium:wdaLocalPort": 8101,
+  "appium:useNewWDA": false
 }
 ```
 
-The video does not use WDA MJPEG anymore.
-
-OBS/WebRTC handles video. Appium only sends commands.
-
-## Common issues
-
-### Video says "already loaded" but nothing appears
-
-Check if the stream opens directly:
+Your server uses:
 
 ```txt
-http://localhost:8889/iphone
+http://127.0.0.1:4723
 ```
 
-If it does not open, the issue is OBS/MediaMTX, not the web app.
+as the Appium server URL.
 
-Restart in this order:
+It exposes browser endpoints such as:
 
 ```txt
-1. MediaMTX
-2. OBS Start Streaming
-3. Browser page
-4. Load OBS Video
+GET  /api/config
+POST /api/session/start
+POST /api/session/stop
+GET  /api/session/status
+POST /api/device/tap
+POST /api/device/swipe
+POST /api/device/home
+POST /api/device/activate-app
 ```
 
-### MediaMTX says path 'iphone' is not configured
+The tap/swipe endpoints receive ratios from the browser and convert them into real device coordinates. That keeps the touch layer working even when the browser video is resized.
 
-Make sure `mediamtx.yml` exists and contains:
+---
 
-```yml
-paths:
-  iphone:
-    source: publisher
+## 9. Fix the device defaults before running
+
+There are two easy defaults to align before running.
+
+If you want the default device to be **iPhone**, update `start-qa-iphone.sh`:
+
+```bash
+DEVICE_NAME="${1:-iPhone}"
+PORT="${2:-8090}"
+
+ echo "Starting QA $DEVICE_NAME stream..."
+ echo "Device: $DEVICE_NAME"
+ echo "Port: $PORT"
+
+swift run QTWindowStream \
+  --device "$DEVICE_NAME" \
+  --script ./open-iphone-quicktime.applescript \
+  --port "$PORT"
 ```
 
-Run MediaMTX explicitly with:
+Then update `run-remote-qa.sh` so the default OBS script also matches iPhone:
+
+```bash
+DEVICE_NAME="${DEVICE_NAME:-iPhone}"
+OBS_SCRIPT="${OBS_SCRIPT:-./run-iphone-obs.sh}"
+```
+
+If you want the default device to be **iPad**, use:
+
+```bash
+DEVICE_NAME="${DEVICE_NAME:-iPad}"
+OBS_SCRIPT="${OBS_SCRIPT:-./run-ipad-obs.sh}"
+```
+
+The important part is that the QuickTime device name and the OBS scene match the same target.
+
+---
+
+## 10. Configure OBS profiles
+
+Run:
+
+```bash
+chmod +x create-obs-profiles.sh
+./create-obs-profiles.sh
+```
+
+This creates two OBS profiles:
+
+```txt
+RemoteQA-iPhone
+RemoteQA-iPad
+```
+
+Both profiles publish to:
+
+```txt
+http://localhost/simulator/whip
+```
+
+The browser reads from:
+
+```txt
+http://localhost/simulator
+```
+
+Now open OBS and create the scene collections if they do not already exist:
+
+```txt
+RemoteQA-iPhone → scene: iPhone
+RemoteQA-iPad   → scene: iPad
+```
+
+For each scene:
+
+1. Add a **Window Capture** source.
+2. Select the QuickTime Player window.
+3. Resize/crop it until only the device screen is visible.
+4. Add audio capture if you want device audio.
+5. Save the scene.
+
+**Image:** add `docs/images/remote-qa/05-obs-scene.png` here.
+
+---
+
+## 11. Test QuickTime capture by itself
+
+Before starting everything, test QuickTime capture alone.
+
+Go into the `qt-window-stream` folder:
+
+```bash
+cd qt-window-stream
+chmod +x start-qa-iphone.sh
+./start-qa-iphone.sh iPhone
+```
+
+For iPad:
+
+```bash
+./start-qa-iphone.sh iPad
+```
+
+The AppleScript should:
+
+1. Open QuickTime Player.
+2. Start a new movie recording.
+3. Open the source dropdown.
+4. Select the iPhone or iPad screen.
+5. Try to unmute the audio preview.
+
+**Image:** add `docs/images/remote-qa/04-quicktime-device.png` here.
+
+If this step fails, the full setup will also fail. Fix QuickTime first.
+
+---
+
+## 12. Test MediaMTX by itself
+
+From the project root, run:
 
 ```bash
 mediamtx mediamtx.yml
 ```
 
-### Audio is not playing in the browser
+MediaMTX should start and listen on port `8889` for WebRTC.
 
-The browser may block autoplay audio.
+In another terminal, check the port:
 
-Click:
-
-```txt
-Mode: Control Player
+```bash
+lsof -nP -iTCP:8889 -sTCP:LISTEN
 ```
 
-Then click the player and unmute it.
+Stop MediaMTX with `Control + C`.
 
-After that, switch back to:
+---
 
-```txt
-Mode: Control iPhone
+## 13. Install Node dependencies
+
+If your project does not have a `package.json` yet, create one:
+
+```bash
+npm init -y
+npm pkg set type="module"
+npm install express cors
 ```
 
-### Tap coordinates are wrong
+Then test the server:
 
-Make sure the OBS canvas contains only the iPhone screen.
+```bash
+node server.js
+```
 
-Avoid:
-
-- black borders
-- QuickTime window title bar
-- extra desktop area
-- landscape canvas
-
-Use a portrait OBS canvas and crop the source.
-
-Recommended canvas:
+Open:
 
 ```txt
-540x1170
+http://localhost:3000
+```
+
+At this point, the page should load, even if the video and device session are not active yet.
+
+---
+
+## 14. Run the full setup
+
+Make the scripts executable:
+
+```bash
+chmod +x run-remote-qa.sh
+chmod +x run-iphone-obs.sh
+chmod +x run-ipad-obs.sh
+chmod +x create-obs-profiles.sh
+```
+
+For iPhone:
+
+```bash
+DEVICE_NAME="iPhone" OBS_SCRIPT="./run-iphone-obs.sh" ./run-remote-qa.sh
+```
+
+For iPad:
+
+```bash
+DEVICE_NAME="iPad" OBS_SCRIPT="./run-ipad-obs.sh" ./run-remote-qa.sh
+```
+
+The script starts services in this order:
+
+1. MediaMTX
+2. QuickTime setup
+3. Appium
+4. Node server
+5. OBS
+
+Then open:
+
+```txt
+http://localhost:3000
+```
+
+OBS should publish to:
+
+```txt
+http://localhost/simulator/whip
+```
+
+The browser should load the stream from:
+
+```txt
+http://localhost/simulator
+```
+
+**Image:** add `docs/images/remote-qa/08-final-browser-ui.png` here.
+
+---
+
+## 15. Start the Appium session from the browser
+
+The browser UI should call:
+
+```txt
+POST /api/session/start
+```
+
+This creates an Appium session using the configured:
+
+- bundle ID
+- device UDID
+- XCUITest driver
+- signing identity
+- Team ID
+
+Once the session is active, the UI can send:
+
+```txt
+POST /api/device/tap
+POST /api/device/swipe
+POST /api/device/home
+POST /api/device/activate-app
+```
+
+The browser should send ratios, not raw pixels. For example:
+
+```json
+{
+  "xRatio": 0.5,
+  "yRatio": 0.5
+}
+```
+
+The server converts that into the real device coordinate based on the current device size.
+
+---
+
+## 16. Logs and debugging
+
+Your startup script writes logs here:
+
+```txt
+logs/mediamtx.log
+logs/quicktime.log
+logs/appium.log
+logs/node-server.log
+logs/obs.log
+```
+
+Useful commands:
+
+```bash
+tail -f logs/mediamtx.log
+```
+
+```bash
+tail -f logs/quicktime.log
+```
+
+```bash
+tail -f logs/appium.log
+```
+
+```bash
+tail -f logs/node-server.log
+```
+
+```bash
+tail -f logs/obs.log
+```
+
+**Image:** add `docs/images/remote-qa/09-logs.png` here.
+
+---
+
+## Common problems
+
+### Port already busy
+
+The script checks ports `3000`, `4723`, and `8889` before starting.
+
+If one is busy, find the process:
+
+```bash
+lsof -nP -iTCP:3000 -sTCP:LISTEN
+lsof -nP -iTCP:4723 -sTCP:LISTEN
+lsof -nP -iTCP:8889 -sTCP:LISTEN
+```
+
+Then stop it, or run your cleanup script:
+
+```bash
+./kill-remote-qa.sh
+```
+
+### QuickTime does not select the device
+
+Check:
+
+- The device is connected by USB.
+- The device is unlocked.
+- The device trusts the Mac.
+- QuickTime can manually select the iPhone/iPad screen.
+- The AppleScript target name matches the device name, for example `iPhone` or `iPad`.
+
+### OBS starts but the browser shows no video
+
+Check:
+
+- OBS is using the correct profile and scene.
+- The scene contains the QuickTime window.
+- OBS is streaming.
+- MediaMTX is running.
+- The WHIP server is set to `http://localhost/simulator/whip`.
+- The browser is trying to read `http://localhost/simulator`.
+
+### Appium fails with code signing errors
+
+Usually this means WebDriverAgent could not be signed or trusted.
+
+Check:
+
+- Xcode has your Apple ID added.
+- Your Team ID is correct.
+- `xcodeOrgId` is passed in the Appium capabilities.
+- The device is visible in Xcode.
+- The device trusts the developer profile if iOS asks for it.
+- The bundle ID under test is correct.
+
+### Taps are offset
+
+This usually means the video display size and touch layer are not using the same aspect ratio.
+
+Fix by keeping the browser touch overlay exactly on top of the video element and always sending ratios:
+
+```txt
+xRatio = clickXInsideVideo / displayedVideoWidth
+yRatio = clickYInsideVideo / displayedVideoHeight
+```
+
+The server should convert ratios into device coordinates.
+
+---
+
+## Running it from another network
+
+For local testing, use:
+
+```txt
+http://localhost:3000
+```
+
+For someone outside your network, you need a secure tunnel or VPN to your Mac, then they open:
+
+```txt
+http://YOUR_MAC_IP_OR_TUNNEL_HOST:3000
+```
+
+If you expose this outside your machine, add authentication before sharing it with testers. This browser UI can control a real device, so do not leave it open publicly without protection.
+
+---
+
+## Final checklist
+
+Before running a QA session, confirm:
+
+- The iPhone/iPad is connected by USB.
+- The device is unlocked and trusted.
+- Xcode can see the device.
+- `server.js` has the correct `appBundleId`, `udid`, and `xcodeOrgId`.
+- Appium has the XCUITest driver installed.
+- OBS has the correct RemoteQA profile and scene.
+- MediaMTX can run with `mediamtx.yml`.
+- QuickTime can manually mirror the device.
+- `run-remote-qa.sh` points to the correct OBS script.
+- The browser opens at `http://localhost:3000`.
+
+Once all of that is ready, run:
+
+```bash
+DEVICE_NAME="iPhone" OBS_SCRIPT="./run-iphone-obs.sh" ./run-remote-qa.sh
 ```
 
 or:
 
-```txt
-1080x2340
-```
-
-### Appium cannot find the device
-
-Check:
-
 ```bash
-idevice_id -l
-xcrun devicectl list devices
+DEVICE_NAME="iPad" OBS_SCRIPT="./run-ipad-obs.sh" ./run-remote-qa.sh
 ```
 
-Then restart the tunnel:
-
-```bash
-sudo appium driver run xcuitest tunnel-creation --tunnel-registry-port 42000
-```
-
-### Tunnel port is already in use
-
-Kill old processes:
-
-```bash
-pkill -f appium
-pkill -f tunnel-creation
-pkill -f appium-ios-remotexpc
-
-for port in 42000 42314 43000 50000 4723 8100 9100 8889 8189; do
-  pids=$(sudo lsof -tiTCP:$port -sTCP:LISTEN)
-  if [ -n "$pids" ]; then
-    echo "Killing port $port: $pids"
-    sudo kill -9 $pids
-  fi
-done
-```
-
-### WDA signing fails
-
-Open WebDriverAgent manually:
-
-```bash
-open ~/.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj
-```
-
-In Xcode:
+Then open:
 
 ```txt
-Target: WebDriverAgentRunner
-Team: Your Apple Developer Team
-Automatically manage signing: ON
-Bundle Identifier: your WDA bundle id
-Device: physical iPhone
-Product > Test
+http://localhost:3000
 ```
 
-Then retry Appium.
-
-## Startup checklist
-
-Run in this order:
-
-```bash
-# Terminal 1
-mediamtx mediamtx.yml
-```
-
-```bash
-# Terminal 2
-sudo appium driver run xcuitest tunnel-creation --tunnel-registry-port 42000
-```
-
-```bash
-# Terminal 3
-appium --address 127.0.0.1 --port 4723 --log-level debug
-```
-
-```bash
-# Terminal 4
-npm start
-```
-
-Then:
-
-```txt
-1. Open QuickTime iPhone preview
-2. Start OBS streaming
-3. Open http://localhost:3000
-4. Click Load OBS Video
-5. Click Start Appium Session
-6. Use Control iPhone mode
-```
-
-## Current design decision
-
-We do not use WDA MJPEG for video because it is screenshot-based and can be slow or unstable.
-
-Instead:
-
-```txt
-OBS/WebRTC = video
-Appium/WDA = control
-```
-
-This gives better FPS and a smoother remote QA experience.
+You now have a browser-based remote QA setup for a real iPhone or iPad.
