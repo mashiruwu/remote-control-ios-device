@@ -19,23 +19,35 @@ app.use(
 app.use(express.json());
 app.use(express.static("public"));
 
-const APPIUM_URL = "http://127.0.0.1:4723";
+
+const PUBLIC_HOST = process.env.PUBLIC_HOST || "";
+
+const PORT = Number(process.env.PORT || 3000);
+
+const APPIUM_URL = process.env.APPIUM_URL || "http://127.0.0.1:4723";
+
+const MEDIAMTX_PORT = Number(process.env.MEDIAMTX_PORT || 8889);
+
+const WDA_LOCAL_PORT = Number(process.env.WDA_LOCAL_PORT || 8101);
 
 const CONFIG = {
-  appBundleId: "",
+  // Default app for first-time Appium/WDA validation.
+  appBundleId: process.env.APP_BUNDLE_ID || "com.apple.Preferences",
 
-  udid: "",
-  xcodeSigningId: "iPhone Developer",
-  xcodeOrgId: "",
+  udid: process.env.DEVICE_UDID || "",
+  deviceType: process.env.DEVICE_TYPE || "iphone",
+  deviceName: process.env.DEVICE_NAME || "",
+
+  xcodeSigningId: process.env.XCODE_SIGNING_ID || "iPhone Developer",
+  xcodeOrgId: process.env.XCODE_ORG_ID || "",
 
   // OBS publishes to:
-  // http://localhost:8889/simulator/whip
+  // http://localhost/simulator/whip
   //
   // Browser watches:
   // http://MAC_IP:8889/simulator
-  obsWebRtcPath: "/simulator"
+  obsWebRtcPath: process.env.WEBRTC_PATH || "/simulator"
 };
-
 let sessionId = null;
 
 let deviceSize = {
@@ -156,16 +168,22 @@ function ratioToDevicePoint(xRatio, yRatio) {
 }
 
 app.get("/api/config", (req, res) => {
-  const host = req.headers.host?.split(":")[0] || "localhost";
+  const requestHost = req.headers.host?.split(":")[0] || "localhost";
+  const host = PUBLIC_HOST || requestHost;
 
   res.json({
     ok: true,
     appBundleId: CONFIG.appBundleId,
     udid: CONFIG.udid,
+    deviceType: CONFIG.deviceType,
+    deviceName: CONFIG.deviceName,
     deviceSize,
 
+    appiumUrl: APPIUM_URL,
+    wdaLocalPort: WDA_LOCAL_PORT,
+
     videoType: "webrtc",
-    videoUrl: `http://${host}:8889${CONFIG.obsWebRtcPath}`
+    videoUrl: `http://${host}:${MEDIAMTX_PORT}${CONFIG.obsWebRtcPath}`
   });
 });
 
@@ -180,6 +198,17 @@ app.post("/api/session/start", async (req, res) => {
       });
     }
 
+    if (!CONFIG.udid) {
+      return res.status(400).json({
+        ok: false,
+        error: "Missing DEVICE_UDID. Run the server through run-remote-qa.sh so the device can be auto-detected."
+      });
+    }
+
+    if (!CONFIG.xcodeOrgId) {
+      console.warn("XCODE_ORG_ID is empty. WebDriverAgent signing may fail.");
+    }
+
     const data = await appiumRequest("/session", {
       method: "POST",
       body: JSON.stringify({
@@ -190,15 +219,18 @@ app.post("/api/session/start", async (req, res) => {
             "appium:automationName": "XCUITest",
             "appium:udid": CONFIG.udid,
             "appium:xcodeSigningId": CONFIG.xcodeSigningId,
+            "appium:xcodeOrgId": CONFIG.xcodeOrgId,
             "appium:showXcodeLog": false,
             "appium:waitForIdleTimeout": 0,
             "appium:newCommandTimeout": 3600,
-            "appium:wdaLocalPort": 8101,
+            "appium:wdaLocalPort": WDA_LOCAL_PORT,
             "appium:useNewWDA": false
           }
         }
       })
     });
+
+
 
     sessionId = data.value.sessionId;
 
@@ -449,7 +481,17 @@ app.post("/api/device/activate-app", async (req, res) => {
   }
 });
 
-app.listen(3000, "0.0.0.0", () => {
-  console.log("iOS Remote QA running at http://0.0.0.0:3000");
-  console.log("Open http://localhost:3000");
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`iOS Remote QA running at http://0.0.0.0:${PORT}`);
+  console.log(`Open http://localhost:${PORT}`);
+  console.log("");
+  console.log("Device config:");
+  console.log(`  Type: ${CONFIG.deviceType}`);
+  console.log(`  Name: ${CONFIG.deviceName || "unknown"}`);
+  console.log(`  UDID: ${CONFIG.udid || "missing"}`);
+  console.log(`  App bundle id: ${CONFIG.appBundleId}`);
+  console.log(`  Xcode Team ID: ${CONFIG.xcodeOrgId || "missing"}`);
+  console.log(`  WDA local port: ${WDA_LOCAL_PORT}`);
+  console.log(`  Appium URL: ${APPIUM_URL}`);
+  console.log(`  WebRTC URL: http://localhost:${MEDIAMTX_PORT}${CONFIG.obsWebRtcPath}`);
 });

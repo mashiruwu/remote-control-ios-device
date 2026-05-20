@@ -129,7 +129,7 @@ OBS publishes the stream to MediaMTX using WHIP.
 Example OBS publish URL:
 
 ```text
-http://localhost:8889/simulator/whip
+http://localhost/simulator/whip
 ```
 
 ---
@@ -141,7 +141,7 @@ MediaMTX receives the OBS stream and exposes it to the browser.
 The browser usually watches:
 
 ```text
-http://localhost:8889/simulator
+http://localhost/simulator
 ```
 
 The frontend should hide this detail from normal users and simply show a “Video Live” status.
@@ -239,7 +239,7 @@ The frontend should collect inputs in a friendly way. Avoid showing everything a
 | Testing notes | `Test onboarding and subscription flow` | Gives the tester a goal. |
 | Stream quality | `Low`, `Medium`, `High` | Helps adapt to slower networks. |
 | WDA local port | `8101` | Useful when ports conflict. |
-| Appium URL | `http://127.0.0.1:4723` | Advanced configuration. |
+| Appium URL | `http://localhost:4723` | Advanced configuration. |
 | MediaMTX playback URL | `http://host:8889/simulator` | Advanced stream configuration. |
 
 ---
