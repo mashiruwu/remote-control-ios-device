@@ -120,8 +120,8 @@ EOF
 copy_template_if_exists
 
 # Current setup uses the same MediaMTX path for both.
-create_profile "RemoteQA-iPhone" 1206 2633 360 786 30 900 "/simulator"
-create_profile "RemoteQA-iPad" 2360 1640 1280 890 30 1200 "/simulator"
+create_profile "RemoteQA-iPhone" 720 1560 540 1170 60 1600 "/simulator"
+create_profile "RemoteQA-iPad" 1572 1092 1180 820 60 2200 "/simulator"
 
 echo ""
 echo "OBS RemoteQA setup installed."

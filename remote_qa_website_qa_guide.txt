@@ -1,0 +1,233 @@
+# Remote QA Website Guide
+
+This guide explains how QA testers can access and use the remote iPhone/iPad testing website.
+
+---
+
+## 1. Create a Tailscale account
+
+Create a Tailscale account using the email that received the invite.
+
+Download and install Tailscale:
+
+```txt
+https://tailscale.com/download
+```
+
+---
+
+## 2. Accept the Tailscale invite
+
+The host will send you a Tailscale invite or machine share link.
+
+Open the link and accept the invite.
+
+After that:
+
+1. Open the Tailscale app.
+2. Log in with the invited account.
+3. Make sure Tailscale says it is connected.
+
+---
+
+## 3. Open the Remote QA website
+
+The host will send you the host machine IP.
+
+It usually looks like this:
+
+```txt
+100.x.x.x
+```
+
+Example:
+
+```txt
+100.66.24.36
+```
+
+Open this in your browser:
+
+```txt
+http://HOST_MACHINE_IP:3000
+```
+
+Example:
+
+```txt
+http://100.66.24.36:3000
+```
+
+Do not use `localhost`.
+
+`localhost` only works on the host Mac.  
+QA testers must use the host machine IP.
+
+---
+
+## 4. Load the video
+
+When the website opens, click:
+
+```txt
+Load OBS Video
+```
+
+This loads the live iPhone/iPad screen.
+
+If the video does not load, wait a few seconds and click it again.
+
+---
+
+## 5. Start device control
+
+Click:
+
+```txt
+Start Appium Session
+```
+
+After this, you can click and swipe inside the phone screen in the browser.
+
+Your clicks and swipes will control the real iPhone/iPad.
+
+---
+
+## 6. Use the Home button
+
+Click:
+
+```txt
+Home
+```
+
+This sends the device to the iPhone/iPad Home screen.
+
+---
+
+## 7. Use audio and player controls
+
+The browser may start the video muted.
+
+To unmute or change the video volume:
+
+1. Click:
+
+```txt
+Control Player
+```
+
+2. Use the video player controls to unmute or change the volume.
+
+3. When finished, click:
+
+```txt
+Control iPhone
+```
+
+This returns control back to the real device.
+
+Simple rule:
+
+```txt
+Control Player = control video/audio
+Control iPhone = control the iPhone/iPad
+```
+
+---
+
+## 8. Resize the device screen
+
+Use the size controls above the phone:
+
+```txt
+-   Size slider   +
+```
+
+This only changes the visual size in your browser.
+
+It does not break touch control.
+
+---
+
+## 9. If control stops working
+
+If taps or swipes stop working:
+
+1. Click:
+
+```txt
+Stop Session
+```
+
+2. Wait a few seconds.
+
+3. Click:
+
+```txt
+Start Appium Session
+```
+
+This usually fixes device control.
+
+---
+
+## 10. If the video freezes
+
+If the video freezes or disappears:
+
+1. Click:
+
+```txt
+Load OBS Video
+```
+
+2. If it still does not work, tell the host to check OBS and QuickTime.
+
+The host may need to restart OBS or reconnect the video stream.
+
+---
+
+## 11. Basic testing flow
+
+Use this order:
+
+```txt
+1. Connect to Tailscale.
+2. Open http://HOST_MACHINE_IP:3000.
+3. Click Load OBS Video.
+4. Click Start Appium Session.
+5. Test the app/device.
+6. Click Control Player only when you need audio/video controls.
+7. Click Stop Session and Start Appium Session if control breaks.
+```
+
+---
+
+## 12. Important notes
+
+Do not use:
+
+```txt
+http://localhost:3000
+```
+
+Use:
+
+```txt
+http://HOST_MACHINE_IP:3000
+```
+
+If something stops working, first try:
+
+```txt
+Stop Session → Start Appium Session
+```
+
+If the video stops working, try:
+
+```txt
+Load OBS Video
+```
+
+If it still does not work, contact the host.
