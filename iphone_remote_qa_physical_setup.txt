@@ -1,0 +1,68 @@
+# iPhone Preparation for Remote QA
+
+## 1. Enable Developer Mode
+
+Device must support running UI tests
+
+On the iPhone/iPad:
+
+```txt
+Settings > Privacy & Security > Developer Mode
+```
+
+Then:
+
+1. Turn **Developer Mode** on.
+2. Tap **Restart** if iOS asks.
+3. After the device restarts, unlock it.
+4. Confirm **Developer Mode** again if iOS asks.
+
+If **Developer Mode** does not appear, connect the device to the Mac and try running WebDriverAgent or another development build from Xcode first. Then check the setting again.
+
+## 2. Remove the Passcode
+
+On the iPhone/iPad:
+
+```txt
+Settings > Face ID & Passcode
+```
+
+or, on older devices:
+
+```txt
+Settings > Touch ID & Passcode
+```
+
+Then:
+
+1. Enter the current passcode.
+2. Tap **Turn Passcode Off**.
+3. Confirm the change if iOS asks.
+
+This makes remote setup easier because the device will not keep asking someone physically near it to unlock the screen.
+
+## 3. Trust the Mac
+
+Connect the iPhone/iPad to the Mac using USB.
+
+Then, on the iPhone/iPad:
+
+1. Unlock the device.
+2. If the **Trust This Computer?** prompt appears, tap **Trust**.
+3. Enter the passcode if iOS asks for it.
+
+The Mac must be trusted before Xcode, QuickTime, and device tools can reliably access the iPhone/iPad.
+
+## 4. What Can Still Require Physical Access
+
+Even after this setup, iOS may still ask for physical confirmation if:
+
+- The device restarts.
+- The device locks.
+- The USB cable is disconnected and reconnected.
+- Trust pairing is reset.
+- Developer Mode needs confirmation again.
+- The developer profile needs to be trusted.
+
+If that happens, someone near the device must unlock it and confirm the prompt.
+

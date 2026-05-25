@@ -118,7 +118,7 @@ async function runDeviceActionOnce(actionName, action) {
   }
 }
 async function appiumRequest(path, options = {}, config = {}) {
-  const timeoutMs = config.timeoutMs ?? 10_000;
+  const timeoutMs = config.timeoutMs ?? 20_000;
 
   const controller = new AbortController();
 
@@ -434,23 +434,45 @@ app.post("/api/device/swipe", async (req, res) => {
 app.post("/api/device/home", async (req, res) => {
   try {
     if (!sessionId) {
-      return res.status(400).json({ ok: false, error: "No active session" });
+      return res.status(400).json({
+        ok: false,
+        error: "No active Appium session"
+      });
     }
 
-    await appiumRequest(`/session/${sessionId}/appium/device/press_button`, {
+    const response = await fetch(`${APPIUM_URL}/session/${sessionId}/execute/sync`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        name: "home"
+        script: "mobile: pressButton",
+        args: [
+          {
+            name: "home"
+          }
+        ]
       })
     });
 
-    res.json({ ok: true });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.value?.error) {
+      return res.status(500).json({
+        ok: false,
+        error: data.value?.message || JSON.stringify(data)
+      });
+    }
+
+    res.json({
+      ok: true
+    });
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
       ok: false,
-      error: String(error.message || error)
+      error: error.message
     });
   }
 });
