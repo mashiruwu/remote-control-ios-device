@@ -20,7 +20,7 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OBS_CONFIG="$HOME/Library/Application Support/obs-studio"
-WHIP_BASE_URL="${WHIP_BASE_URL:-http://localhost}"
+WHIP_BASE_URL="${WHIP_BASE_URL:-http://localhost:8889}"
 
 OBS_PROFILES_DIR="$OBS_CONFIG/basic/profiles"
 OBS_SCENES_DIR="$OBS_CONFIG/basic/scenes"
@@ -98,7 +98,7 @@ RecTracks=1
 Encoder=obs_x264
 ApplyServiceSettings=true
 UseRescale=false
-Track1Bitrate=$BITRATE
+Track1Bitrate=96
 VodTrackIndex=2
 FFOutputToFile=true
 
@@ -120,8 +120,8 @@ EOF
 copy_template_if_exists
 
 # Current setup uses the same MediaMTX path for both.
-create_profile "RemoteQA-iPhone" 720 1560 540 1170 60 1600 "/simulator"
-create_profile "RemoteQA-iPad" 1572 1092 1180 820 60 2200 "/simulator"
+create_profile "RemoteQA-iPhone" 720 1560 360 780 30 800 "/simulator"
+create_profile "RemoteQA-iPad" 1572 1092 960 667 30 1000 "/simulator"
 
 echo ""
 echo "OBS RemoteQA setup installed."
